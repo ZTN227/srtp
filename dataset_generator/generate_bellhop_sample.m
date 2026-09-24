@@ -1,10 +1,5 @@
 function meta = generate_bellhop_sample(s, dataRoot, datasetName)
-%GENERATE_BELLHOP_SAMPLE Produce one model-ready waveform and its records.
-%   Outputs are placed in audio/, spectrogram/, metadata/, and channel/.
-%   All paths written to metadata are relative to the workspace root.
 
-mustHave(s, {'id','sig','fs','dur','snr_db','z','temp','salt','sd','rd','rr'});
-mustHave(s.sig, {'type','start_time_s','pulse_width_s'});
 
 audioDir = fullfile(dataRoot, 'audio');
 specDir = fullfile(dataRoot, 'spectrogram');
@@ -18,7 +13,8 @@ end
 fc = signal_center_frequency(s.sig);
 assert(fc > 0 && fc < s.fs/2, 'Bellhop centre frequency must be below Nyquist.');
 [SSP, Bdry, Pos, Beam, cInt, RMax, c] = ...
-    build_ssp(s.z, s.temp, s.salt, s.sd, s.rd, s.rr);
+    build_ssp(s.z, s.temp, s.salt, s.sd, s.rd, s.rr);  %构建 Bellhop 所需全套环境参数
+%计算声速剖面 SSP、海面海底边界、射线参数、最大计算距离、各深度对应的声速
 
 env = fullfile(channelDir, [s.id '.env']);
 arr = fullfile(channelDir, [s.id '.arr']);
@@ -29,14 +25,14 @@ restoreFolder = onCleanup(@() cd(old));
 cd(channelDir);
 bellhop(s.id);
 assert(isfile(arr), 'Bellhop did not generate %s.', arr);
-[Arr, ~] = read_arrivals_local(arr, 500);
+[Arr, ~] = read_arrivals_local(arr, 500);  %读取 arr 到达文件，解析多途射线：每一条到达路径的到达延迟、幅度、相位
 
-[tx, label, source] = generate_signal(s.sig, s.fs, s.dur);
+[tx, label, source] = generate_signal(s.sig, s.fs, s.dur);  %生成信号
 [clean, delayS, amp] = delayandsum(tx, s.fs, Arr, 1, 1, 1);
-noiseBw = min(6000, 2*min(fc, s.fs/2-fc));
-noise = makenoise(fc, noiseBw, s.dur, s.fs);
-noise = noise / sqrt(mean(noise.^2));
-noise = noise * sqrt(mean(clean.^2) / 10^(s.snr_db/10));
+noiseBw = min(6000, 2*min(fc, s.fs/2-fc));  %计算噪声带宽
+noise = makenoise(fc, noiseBw, s.dur, s.fs);  %生成带限噪声
+noise = noise / sqrt(mean(noise.^2));  %归一化
+noise = noise * sqrt(mean(clean.^2) / 10^(s.snr_db/10));  %SNR 缩放功率
 rx = clean + noise;
 actualSnrDb = 10*log10(mean(clean.^2) / mean((rx-clean).^2));
 if max(abs(rx)) > 0.999, rx = 0.999*rx/max(abs(rx)); end
