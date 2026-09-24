@@ -1,24 +1,19 @@
-function manifest = generate_cw_dataset()
-%GENERATE_CW_DATASET Create a small, extensible CW Bellhop dataset.
-%   This driver defines only the parameter set.  The common synthesis,
-%   Bellhop propagation, WAV, spectrogram, JSON and manifest work are in
-%   generate_bellhop_sample.m.  Add more entries to samples to scale up.
+function manifest = generate_cw_dataset()  %负责参数集合的管理
 
-root = fileparts(fileparts(mfilename('fullpath')));
-addpath(fullfile(root, 'bellhop_tools'), '-begin');
+
+root = fileparts(fileparts(mfilename('fullpath')));  %得到当前`generate_cw_dataset.m`完整路径
 
 datasetName = 'cw_two_sample_demo';
 dataRoot = fullfile(root, 'output', 'datasets', datasetName);
 manifest = fullfile(dataRoot, 'manifest.jsonl');
-if ~exist(dataRoot, 'dir'), mkdir(dataRoot); end
-numSamples = 2;              % Change this number for a larger CW dataset.
+if ~exist(dataRoot, 'dir'), mkdir(dataRoot); end  %如果数据集输出总文件夹不存在，则创建
+numSamples = 3;              % 样本总数
 
-% The manifest is rebuilt from the parameter list below on every run.
-fid = fopen(manifest, 'w');
+fid = fopen(manifest, 'w');  %每次运行清空旧 manifest 文件
 assert(fid ~= -1, 'Cannot write %s.', manifest);
 fclose(fid);
 
-rng(20260919, 'twister');
+rng(20260919, 'twister');  %固定随机种子
 samples = make_cw_parameter_set(numSamples);
 for k = 1:numel(samples)
     meta = generate_bellhop_sample(samples(k), dataRoot, datasetName);
